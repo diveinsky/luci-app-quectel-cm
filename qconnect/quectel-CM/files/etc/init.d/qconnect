@@ -1,0 +1,174 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+USE_PROCD=1
+
+. /lib/functions.sh
+
+MODEM_CONF="quectel-cm-modem"
+MODEM_SECTION="modem0"
+STATUS_SECTION="status0"
+LEGACY_CONF="qconnect"
+LEGACY_SECTION="qconnect"
+EXTRA_COMMANDS="killpdn"
+EXTRA_HELP="    killpdn [pdp]    Disconnect a specific PDN using quectel-CM"
+
+append_arg() {
+	local value="$1"
+	local flag="$2"
+
+	[ -n "$value" ] && procd_append_param command "$flag" "$value"
+}
+
+get_legacy_value() {
+	local fallback="$1"
+
+	if [ -n "$fallback" ]; then
+		printf '%s' "$fallback"
+	fi
+}
+
+load_settings() {
+	config_load "$MODEM_CONF"
+
+	config_get enabled "$MODEM_SECTION" enabled ""
+	config_get log_enabled "$MODEM_SECTION" log ""
+	config_get log_file "$MODEM_SECTION" log_file ""
+	config_get usbmon_log_file "$MODEM_SECTION" usbmon_log_file ""
+	config_get cell_internet_mode "$MODEM_SECTION" cell_internet_mode ""
+	config_get network_interface "$MODEM_SECTION" network_interface ""
+	config_get pincode "$MODEM_SECTION" pincode ""
+	config_get proxy_mode "$MODEM_SECTION" proxy_mode ""
+	config_get pdp "$MODEM_SECTION" pdp ""
+	config_get mux_id "$MODEM_SECTION" mux_id ""
+	config_get ip_type "$MODEM_SECTION" ip_type ""
+	config_get verbose "$MODEM_SECTION" verbose ""
+	config_get no_dhcp "$MODEM_SECTION" no_dhcp ""
+
+	config_get auto_apn "$STATUS_SECTION" auto_apn ""
+	config_get apn "$STATUS_SECTION" apn ""
+	config_get username "$STATUS_SECTION" username ""
+	config_get password "$STATUS_SECTION" password ""
+	config_get auth "$STATUS_SECTION" auth ""
+
+	config_load "$LEGACY_CONF"
+	config_get legacy_enabled "$LEGACY_SECTION" enabled "1"
+	config_get legacy_log_enabled "$LEGACY_SECTION" log "1"
+	config_get legacy_log_file "$LEGACY_SECTION" log_file "/tmp/q-cm.log"
+	config_get legacy_auto_apn "$LEGACY_SECTION" auto_apn ""
+	config_get legacy_apn "$LEGACY_SECTION" apn ""
+	config_get legacy_username "$LEGACY_SECTION" username ""
+	config_get legacy_password "$LEGACY_SECTION" password ""
+	config_get legacy_auth "$LEGACY_SECTION" auth "none"
+	config_get legacy_pdp "$LEGACY_SECTION" pdp "1"
+	config_get legacy_ip_type "$LEGACY_SECTION" ip_type "ipv4"
+	config_get legacy_bridge_mode "$LEGACY_SECTION" bridge_mode "0"
+
+	enabled="$(get_legacy_value "$enabled")"
+	[ -n "$enabled" ] || enabled="$legacy_enabled"
+	log_enabled="$(get_legacy_value "$log_enabled")"
+	[ -n "$log_enabled" ] || log_enabled="$legacy_log_enabled"
+	log_file="$(get_legacy_value "$log_file")"
+	[ -n "$log_file" ] || log_file="$legacy_log_file"
+	[ -n "$usbmon_log_file" ] || usbmon_log_file=""
+	cell_internet_mode="$(get_legacy_value "$cell_internet_mode")"
+	[ -n "$cell_internet_mode" ] || cell_internet_mode="nat"
+	[ -n "$proxy_mode" ] || proxy_mode=""
+	pdp="$(get_legacy_value "$pdp")"
+	[ -n "$pdp" ] || pdp="$legacy_pdp"
+	[ -n "$mux_id" ] || mux_id=""
+	ip_type="$(get_legacy_value "$ip_type")"
+	[ -n "$ip_type" ] || ip_type="$legacy_ip_type"
+	auto_apn="$(get_legacy_value "$auto_apn")"
+	[ -n "$auto_apn" ] || auto_apn="$legacy_auto_apn"
+	apn="$(get_legacy_value "$apn")"
+	[ -n "$apn" ] || apn="$legacy_apn"
+	username="$(get_legacy_value "$username")"
+	[ -n "$username" ] || username="$legacy_username"
+	password="$(get_legacy_value "$password")"
+	[ -n "$password" ] || password="$legacy_password"
+	auth="$(get_legacy_value "$auth")"
+	[ -n "$auth" ] || auth="$legacy_auth"
+	verbose="$(get_legacy_value "$verbose")"
+	[ -n "$verbose" ] || verbose="0"
+	[ -n "$no_dhcp" ] || no_dhcp="0"
+	bridge_mode="$legacy_bridge_mode"
+
+	[ "$cell_internet_mode" = "ippt" ] && bridge_mode="1" || bridge_mode="0"
+	[ "$auto_apn" = "1" ] && apn=""
+	[ -n "$enabled" ] || enabled="1"
+	[ -n "$log_enabled" ] || log_enabled="1"
+	[ -n "$log_file" ] || log_file="/tmp/q-cm.log"
+	[ -n "$pdp" ] || pdp="1"
+	[ -n "$ip_type" ] || ip_type="ipv4"
+	[ -n "$auth" ] || auth="none"
+}
+
+boot_prepare() {
+	rmmod usbserial 2>/dev/null
+	rmmod ch341 2>/dev/null
+}
+
+boot_finish() {
+	modprobe usbserial 2>/dev/null
+	sleep 2
+	modprobe ch341 2>/dev/null
+}
+
+start_service() {
+	load_settings
+	[ "$enabled" = "0" ] && return 0
+
+	echo "start wait 30sec >>>>>>>>"
+	boot_prepare
+	sleep 30
+	echo "Module loading >>>>>>>>"
+	insmod qmi_wwan_q.ko qmap_mode=1 2>/dev/null
+	sleep 5
+	echo "############## Start LTE ############"
+
+	procd_open_instance
+	procd_set_param command /sbin/quectel-CM
+
+	[ "$bridge_mode" = "1" ] && procd_append_param command -b
+	append_arg "$pincode" -p
+	append_arg "$proxy_mode" -p
+	append_arg "$network_interface" -i
+	[ "$pdp" != "1" ] && append_arg "$pdp" -n
+	[ -n "$mux_id" ] && append_arg "$mux_id" -m
+	[ "$ip_type" = "ipv4v6" ] && procd_append_param command -4 -6
+	[ "$ip_type" = "ipv6" ] && procd_append_param command -6
+	[ "$auto_apn" != "1" ] && append_arg "$apn" -s
+	[ "$auto_apn" != "1" ] && [ -n "$username" ] && procd_append_param command "$username"
+	[ "$auto_apn" != "1" ] && [ -n "$password" ] && procd_append_param command "$password"
+	case "$auth" in
+		pap) [ "$auto_apn" != "1" ] && procd_append_param command 1 ;;
+		chap) [ "$auto_apn" != "1" ] && procd_append_param command 2 ;;
+		mschapv2) [ "$auto_apn" != "1" ] && procd_append_param command 3 ;;
+	esac
+	[ "$verbose" = "1" ] && procd_append_param command -v
+	[ "$no_dhcp" = "1" ] && procd_append_param command -d
+	[ "$log_enabled" = "1" ] && append_arg "$log_file" -f
+	append_arg "$usbmon_log_file" -u
+
+	procd_set_param respawn
+	procd_close_instance
+
+	echo "####################################"
+	boot_finish
+}
+
+stop_service() {
+	service_stop /sbin/quectel-CM
+}
+
+killpdn() {
+	local pdp="${1:-1}"
+
+	/sbin/quectel-CM -k "$pdp"
+}
+
+service_triggers() {
+	procd_add_reload_trigger "$MODEM_CONF"
+	procd_add_reload_trigger "$LEGACY_CONF"
+}
