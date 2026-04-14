@@ -19,34 +19,18 @@ function serviceStatusText(running) {
 	return running ? _('Running') : _('Stopped');
 }
 
-function bindForeignOption(option, configName, sectionName) {
-	option.cfgvalue = function() {
-		return uci.get(configName, sectionName, this.option);
-	};
-
-	option.write = function(section_id, value) {
-		return uci.set(configName, sectionName, this.option, value);
-	};
-
-	option.remove = function() {
-		return uci.unset(configName, sectionName, this.option);
-	};
-
-	return option;
-}
-
 return view.extend({
 	load: function() {
 		return Promise.all([
-			uci.load('quectel-cm-modem'),
-			callServiceList('qconnect').catch(function() { return {}; })
+			uci.load('qtcm'),
+			callServiceList('qtcm').catch(function() { return {}; })
 		]);
 	},
 
 	render: function() {
-		var map = new form.Map('quectel-cm-modem', _('Quectel Connection Manager'),
-			_('Configure modem dialing settings and manage the qconnect service for quectel-CM.'));
-		var section = map.section(form.NamedSection, 'modem0', 'modem', _('Connection Settings'));
+		var map = new form.Map('qtcm', _('QTCM'),
+			_('Configure QTCM dialing settings and manage the qtcm service for quectel-CM.'));
+		var section = map.section(form.NamedSection, 'main', 'qtcm', _('Connection Settings'));
 		var statusNode = E('div', { 'class': 'cbi-section-descr' }, _('Checking service status...'));
 		var pdnSelect = E('select', { 'class': 'cbi-input-select' }, [
 			E('option', { 'value': '1' }, _('Profile 1')),
@@ -61,8 +45,8 @@ return view.extend({
 				E('button', {
 					'class': 'btn cbi-button cbi-button-apply',
 					'click': ui.createHandlerFn(this, function() {
-						return fs.exec('/etc/init.d/qconnect', [ 'start' ]).then(L.bind(function() {
-							ui.addNotification(null, E('p', _('Quectel CM service started.')));
+						return fs.exec('/etc/init.d/qtcm', [ 'start' ]).then(L.bind(function() {
+							ui.addNotification(null, E('p', _('QTCM service started.')));
 							return this.updateStatus(statusNode);
 						}, this));
 					})
@@ -71,8 +55,8 @@ return view.extend({
 				E('button', {
 					'class': 'btn cbi-button cbi-button-action',
 					'click': ui.createHandlerFn(this, function() {
-						return fs.exec('/etc/init.d/qconnect', [ 'restart' ]).then(L.bind(function() {
-							ui.addNotification(null, E('p', _('Quectel CM service restarted.')));
+						return fs.exec('/etc/init.d/qtcm', [ 'restart' ]).then(L.bind(function() {
+							ui.addNotification(null, E('p', _('QTCM service restarted.')));
 							return this.updateStatus(statusNode);
 						}, this));
 					})
@@ -81,8 +65,8 @@ return view.extend({
 				E('button', {
 					'class': 'btn cbi-button cbi-button-reset',
 					'click': ui.createHandlerFn(this, function() {
-						return fs.exec('/etc/init.d/qconnect', [ 'stop' ]).then(L.bind(function() {
-							ui.addNotification(null, E('p', _('Quectel CM service stopped.')));
+						return fs.exec('/etc/init.d/qtcm', [ 'stop' ]).then(L.bind(function() {
+							ui.addNotification(null, E('p', _('QTCM service stopped.')));
 							return this.updateStatus(statusNode);
 						}, this));
 					})
@@ -91,8 +75,8 @@ return view.extend({
 				E('button', {
 					'class': 'btn cbi-button',
 					'click': ui.createHandlerFn(this, function() {
-						return fs.exec('/etc/init.d/qconnect', [ 'enable' ]).then(function() {
-							ui.addNotification(null, E('p', _('Quectel CM service enabled at boot.')));
+						return fs.exec('/etc/init.d/qtcm', [ 'enable' ]).then(function() {
+							ui.addNotification(null, E('p', _('QTCM service enabled at boot.')));
 						});
 					})
 				}, [ _('Enable on Boot') ]),
@@ -100,8 +84,8 @@ return view.extend({
 				E('button', {
 					'class': 'btn cbi-button',
 					'click': ui.createHandlerFn(this, function() {
-						return fs.exec('/etc/init.d/qconnect', [ 'disable' ]).then(function() {
-							ui.addNotification(null, E('p', _('Quectel CM service disabled at boot.')));
+						return fs.exec('/etc/init.d/qtcm', [ 'disable' ]).then(function() {
+							ui.addNotification(null, E('p', _('QTCM service disabled at boot.')));
 						});
 					})
 				}, [ _('Disable on Boot') ])
@@ -113,7 +97,7 @@ return view.extend({
 				E('button', {
 					'class': 'btn cbi-button cbi-button-action',
 					'click': ui.createHandlerFn(this, function() {
-						return fs.exec('/etc/init.d/qconnect', [ 'killpdn', pdnSelect.value ]).then(function() {
+						return fs.exec('/etc/init.d/qtcm', [ 'killpdn', pdnSelect.value ]).then(function() {
 							ui.addNotification(null, E('p', _('Requested disconnect for PDN profile %s.').format(pdnSelect.value)));
 						});
 					})
@@ -153,21 +137,21 @@ return view.extend({
 		o.value('ipv4v6', _('IPv4 / IPv6'));
 		o.default = 'ipv4';
 
-		o = bindForeignOption(section.taboption('basic', form.Flag, 'auto_apn', _('Automatic APN')), 'quectel-cm-modem', 'status0');
+		o = section.taboption('basic', form.Flag, 'auto_apn', _('Automatic APN'));
 		o.rmempty = false;
 		o.default = '1';
 
-		o = bindForeignOption(section.taboption('basic', form.Value, 'apn', _('APN')), 'quectel-cm-modem', 'status0');
+		o = section.taboption('basic', form.Value, 'apn', _('APN'));
 		o.depends('auto_apn', '0');
 
-		o = bindForeignOption(section.taboption('basic', form.Value, 'username', _('Username')), 'quectel-cm-modem', 'status0');
+		o = section.taboption('basic', form.Value, 'username', _('Username'));
 		o.depends('auto_apn', '0');
 
-		o = bindForeignOption(section.taboption('basic', form.Value, 'password', _('Password')), 'quectel-cm-modem', 'status0');
+		o = section.taboption('basic', form.Value, 'password', _('Password'));
 		o.password = true;
 		o.depends('auto_apn', '0');
 
-		o = bindForeignOption(section.taboption('basic', form.ListValue, 'auth', _('Authentication')), 'quectel-cm-modem', 'status0');
+		o = section.taboption('basic', form.ListValue, 'auth', _('Authentication'));
 		o.value('none', _('None'));
 		o.value('pap', _('PAP'));
 		o.value('chap', _('CHAP'));
@@ -215,7 +199,7 @@ return view.extend({
 		o.optional = true;
 
 		map.onAfterCommit = L.bind(function() {
-			return fs.exec('/etc/init.d/qconnect', [ 'restart' ]).then(L.bind(function() {
+			return fs.exec('/etc/init.d/qtcm', [ 'restart' ]).then(L.bind(function() {
 				ui.addNotification(null, E('p', _('Configuration applied and service restarted.')));
 				return this.updateStatus(statusNode);
 			}, this)).catch(function(err) {
@@ -236,8 +220,8 @@ return view.extend({
 	},
 
 	updateStatus: function(node) {
-		return callServiceList('qconnect').then(function(result) {
-			var instances = result && result.qconnect && result.qconnect.instances;
+		return callServiceList('qtcm').then(function(result) {
+			var instances = result && result.qtcm && result.qtcm.instances;
 			var running = false;
 
 			if (instances) {

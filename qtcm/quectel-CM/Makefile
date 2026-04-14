@@ -4,7 +4,7 @@
 
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=qconnect
+PKG_NAME:=qtcm
 PKG_VERSION:=1.0.0
 PKG_RELEASE:=$(AUTORELEASE)
 
@@ -13,17 +13,17 @@ PKG_LICENSE:=GNU GENERAL PUBLIC LICENSE
 
 include $(INCLUDE_DIR)/package.mk
 
-define Package/qconnect
-	CATEGORY:=qcwrt package
+define Package/qtcm
+	CATEGORY:=openwrt package
 	SUBMENU:=Utils
 	# Select package by default
 	DEFAULT:=y
-	TITLE:=Quectel QConnect application
+	TITLE:=Quectel QTCM application
 	URL:=https://www.openwrt.com
 endef
 
-define Package/qconnect/description
-	Qconnect Application for 4G/5G.
+define Package/qtcm/description
+	QTCM application for 4G/5G.
 endef
 
 define Build/Prepare
@@ -31,11 +31,11 @@ define Build/Prepare
 	$(CP) ./src/* $(PKG_BUILD_DIR)/
 endef
 
-define Package/qconnect/install
+define Package/qtcm/install
 	$(CP) ./files/* $(1)/
 
 	$(INSTALL_DIR) $(1)/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/out/quectel-CM $(1)/sbin/
 endef
 
-$(eval $(call BuildPackage,qconnect))
+$(eval $(call BuildPackage,qtcm))

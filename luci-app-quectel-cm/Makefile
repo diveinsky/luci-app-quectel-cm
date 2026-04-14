@@ -8,7 +8,7 @@ PKG_LICENSE:=GPL-2.0-only
 PKG_MAINTAINER:=Shiva Aradi <developer.aradi@gmail.com>
 
 LUCI_TITLE:=LuCI support for Quectel Connection Manager
-LUCI_DEPENDS:=+luci-base +qconnect
+LUCI_DEPENDS:=+luci-base +qtcm
 LUCI_PKGARCH:=all
 
 include $(TOPDIR)/feeds/luci/luci.mk

@@ -12,4 +12,4 @@ Build
 
 For example:
 
-	$ make package/qconnect/qmi-wwan-q/{clean,prepare,compile} V=s
+	$ make package/qtcm/qmi-wwan-q/{clean,prepare,compile} V=s
