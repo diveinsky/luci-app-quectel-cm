@@ -1,0 +1,17 @@
+{
+	"luci-app-quectel-cm": {
+		"description": "Grant access to the Quectel CM LuCI app",
+		"read": {
+			"uci": [ "qconnect", "quectel-cm-modem" ],
+			"ubus": {
+				"service": [ "list" ]
+			}
+		},
+		"write": {
+			"uci": [ "qconnect", "quectel-cm-modem" ],
+			"file": {
+				"/etc/init.d/qconnect": [ "exec" ]
+			}
+		}
+	}
+}
