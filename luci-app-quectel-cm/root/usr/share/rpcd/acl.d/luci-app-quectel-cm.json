@@ -10,7 +10,8 @@
 		"write": {
 			"uci": [ "qtcm" ],
 			"file": {
-				"/etc/init.d/qtcm": [ "exec" ]
+				"/etc/init.d/qtcm": [ "exec" ],
+				"/usr/bin/qtcm-status.sh": [ "exec" ]
 			}
 		}
 	}

@@ -163,6 +163,10 @@ return view.extend({
 		o.placeholder = 'wwan0';
 		o.optional = true;
 
+		o = section.taboption('advanced', form.Value, 'at_port', _('AT port'));
+		o.placeholder = '/dev/ttyUSB2';
+		o.optional = true;
+
 		o = section.taboption('advanced', form.Value, 'pincode', _('SIM PIN'));
 		o.password = true;
 		o.optional = true;

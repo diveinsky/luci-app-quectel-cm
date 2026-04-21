@@ -1,5 +1,5 @@
 bin_PROGRAMS = quectel-CM
-QL_CM_SRC=QmiWwanCM.c GobiNetCM.c main.c MPQMUX.c QMIThread.c util.c qmap_bridge_mode.c mbim-cm.c device.c
+QL_CM_SRC=QmiWwanCM.c GobiNetCM.c main.c QCQMUX.c QMIThread.c util.c qmap_bridge_mode.c mbim-cm.c device.c
 QL_CM_SRC+=atc.c atchannel.c at_tok.c
 #QL_CM_SRC+=qrtr.c rmnetctl.c
 QL_CM_DHCP=udhcpc.c
@@ -18,5 +18,8 @@ quectel_qmi_proxy_SOURCES = quectel-qmi-proxy.c
 
 bin_PROGRAMS += quectel-mbim-proxy
 quectel_mbim_proxy_SOURCES = quectel-mbim-proxy.c
+
+bin_PROGRAMS += quectel-atc-proxy
+quectel_atc_proxy_SOURCES = quectel-atc-proxy.c atchannel.c at_tok.c util.c
 LIBS = -l pthread
 CFLAGS = -Wall -Wextra -Werror -O1

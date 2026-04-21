@@ -32,7 +32,11 @@ define Build/Prepare
 endef
 
 define Package/qtcm/install
-	$(CP) ./files/* $(1)/
+	$(INSTALL_DIR) $(1)/etc/config
+	$(INSTALL_CONF) ./files/etc/config/qtcm $(1)/etc/config/qtcm
+
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) ./files/etc/init.d/qtcm $(1)/etc/init.d/qtcm
 
 	$(INSTALL_DIR) $(1)/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/out/quectel-CM $(1)/sbin/

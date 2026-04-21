@@ -1,0 +1,14 @@
+{
+	"luci-app-useradmin": {
+		"description": "Grant access to the LuCI User Administration app",
+		"read": {
+			"uci": [ "rpcd" ]
+		},
+		"write": {
+			"file": {
+				"/usr/bin/luci-useradmin.sh": [ "exec" ]
+			},
+			"uci": [ "rpcd" ]
+		}
+	}
+}

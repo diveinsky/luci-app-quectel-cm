@@ -1,5 +1,11 @@
 #!/bin/sh /etc/rc.common
 
+[ -f /lib/functions.sh ] || {
+	echo "qtcm: OpenWrt runtime not detected; /lib/functions.sh is missing." >&2
+	echo "Install this script on an OpenWrt target or run it via the OpenWrt init system." >&2
+	exit 1
+}
+
 START=99
 USE_PROCD=1
 
@@ -26,6 +32,7 @@ load_settings() {
 	config_get usbmon_log_file "$SECTION" usbmon_log_file ""
 	config_get cell_internet_mode "$SECTION" cell_internet_mode "nat"
 	config_get network_interface "$SECTION" network_interface ""
+	config_get at_port "$SECTION" at_port ""
 	config_get pincode "$SECTION" pincode ""
 	config_get proxy_mode "$SECTION" proxy_mode ""
 	config_get pdp "$SECTION" pdp "1"

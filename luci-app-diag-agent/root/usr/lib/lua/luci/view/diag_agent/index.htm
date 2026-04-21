@@ -1,0 +1,31 @@
+<%+header%>
+<div class="cbi-section">
+  <h2><%:Diagnostic Agent%></h2>
+  <p><%:This page queries the diagnostic agent and displays the selected module output in JSON.%></p>
+  <div id="diag-agent-output" class="cbi-section-node">
+    <pre><%:Loading...%></pre>
+  </div>
+  <div class="cbi-section">
+    <button class="cbi-button" id="diag-agent-refresh"><%:Refresh%></button>
+  </div>
+</div>
+<script>
+function renderDiagAgent(data) {
+  var output = document.getElementById('diag-agent-output')
+  output.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>'
+}
+
+function fetchDiagAgent() {
+  var url = window.location.pathname + '/status'
+  fetch(url, { credentials: 'same-origin' })
+    .then(function (res) { return res.json() })
+    .then(renderDiagAgent)
+    .catch(function (err) {
+      document.getElementById('diag-agent-output').innerHTML = '<pre>Error: ' + err + '</pre>'
+    })
+}
+
+document.getElementById('diag-agent-refresh').addEventListener('click', fetchDiagAgent)
+fetchDiagAgent()
+</script>
+<%+footer%>

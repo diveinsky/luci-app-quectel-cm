@@ -1,0 +1,149 @@
+#!/bin/sh
+
+BIN_DIR="$(cd "$(dirname "$0")" >/dev/null 2>&1 && pwd)"
+MODULES="boot storage wifi network runtime"
+
+run_module() {
+    local script="$BIN_DIR/$1"
+    if [ ! -x "$script" ]; then
+        printf 'null'
+        return
+    fi
+    "$script"
+}
+
+module_script() {
+    case "$1" in
+        boot) printf 'diag_boot_json.sh' ;;
+        storage) printf 'diag_storage_json.sh' ;;
+        wifi) printf 'diag_wifi_json.sh' ;;
+        network) printf 'diag_network_json.sh' ;;
+        runtime) printf 'diag_runtime_json.sh' ;;
+        *) return 1 ;;
+    esac
+}
+
+usage() {
+    cat <<EOF
+Usage: $0 [OPTIONS] [MODULE...]
+
+Options:
+  --all             run all diagnostic modules
+  --list            list available modules
+  --include=LIST    run only the comma-separated modules in LIST
+  --exclude=LIST    run all modules except those in LIST
+  -h, --help        show this help
+
+Modules:
+  boot storage wifi network runtime
+
+Examples:
+  $0 --all
+  $0 boot storage
+  $0 --all --exclude=wifi
+  $0 --include=boot,network
+EOF
+    exit 1
+}
+
+parse_list() {
+    local result=""
+    local part
+    for part in $(echo "$1" | tr ',' ' '); do
+        case "$part" in
+            boot|storage|wifi|network|runtime) result="$result $part" ;;
+            *) echo "Unknown module: $part" >&2 ; exit 1 ;;
+        esac
+    done
+    printf '%s' "$result"
+}
+
+add_unique() {
+    case " $2 " in
+        *" $1 "*) ;;
+        *) printf '%s %s' "$2" "$1" ;;
+    esac
+}
+
+selected=""
+excluded=""
+all=0
+
+if [ $# -eq 0 ]; then
+    usage
+fi
+
+for arg in "$@"; do
+    case "$arg" in
+        --all|all)
+            all=1
+            ;;
+        --list)
+            echo "$MODULES"
+            exit 0
+            ;;
+        --include=*)
+            selected="$(parse_list "${arg#*=}")"
+            ;;
+        --exclude=*)
+            excluded="$(parse_list "${arg#*=}")"
+            ;;
+        -h|--help)
+            usage
+            ;;
+        boot|storage|wifi|network|runtime)
+            selected="$(add_unique "$arg" "$selected")"
+            ;;
+        *)
+            echo "Unknown argument: $arg" >&2
+            usage
+            ;;
+    esac
+done
+
+if [ -z "$selected" ]; then
+    if [ "$all" -eq 1 ]; then
+        selected="$MODULES"
+    elif [ -n "$excluded" ]; then
+        selected="$MODULES"
+    fi
+fi
+
+if [ -z "$selected" ]; then
+    usage
+fi
+
+for mod in $excluded; do
+    selected="$(printf '%s\n' $selected | grep -v "^$mod$" | tr '\n' ' ' | sed 's/  */ /g' | sed 's/^ //; s/ $//')"
+    selected="$(printf '%s' "$selected")"
+
+done
+
+if [ -z "$selected" ]; then
+    echo "No modules selected." >&2
+    exit 1
+fi
+
+json=""
+for mod in $selected; do
+    script="$(module_script "$mod")"
+    if [ $? -ne 0 ]; then
+        echo "Unsupported module: $mod" >&2
+        exit 1
+    fi
+    output="$(run_module "$script")"
+    if [ -n "$json" ]; then
+        json="$json,
+  \"$mod\": $output"
+    else
+        json="  \"$mod\": $output"
+    fi
+done
+
+cat <<EOF
+{
+  "schema_version": "1.0",
+  "generated_at": "$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null)",
+$json
+}
+EOF

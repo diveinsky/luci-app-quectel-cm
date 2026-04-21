@@ -1,0 +1,10 @@
+{
+	"admin/system/useradmin": {
+		"title": "User Admin",
+		"order": 60,
+		"action": {
+			"type": "view",
+			"path": "useradmin/config"
+		}
+	}
+}

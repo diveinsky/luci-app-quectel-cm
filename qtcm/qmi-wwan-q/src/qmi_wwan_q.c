@@ -97,6 +97,14 @@ extern struct rmnet_nss_cb *rmnet_nss_callbacks __rcu __read_mostly;
 #define QUECTEL_WWAN_VERSION "Quectel_Linux&Android_QMI_WWAN_Driver_"VERSION_NUMBER
 static const char driver_name[] = "qmi_wwan_q";
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,0))
+#define qmi_u64_stats_fetch_begin(syncp) u64_stats_fetch_begin(syncp)
+#define qmi_u64_stats_fetch_retry(syncp, start) u64_stats_fetch_retry(syncp, start)
+#else
+#define qmi_u64_stats_fetch_begin(syncp) u64_stats_fetch_begin_irq(syncp)
+#define qmi_u64_stats_fetch_retry(syncp, start) u64_stats_fetch_retry_irq(syncp, start)
+#endif
+
 /* driver specific data */
 struct qmi_wwan_state {
 	struct usb_driver *subdriver;
@@ -829,12 +837,12 @@ static struct rtnl_link_stats64 *_rmnet_vnd_get_stats64(struct net_device *net, 
 		stats64 = per_cpu_ptr(dev->stats64, cpu);
 
 		do {
-			start = u64_stats_fetch_begin_irq(&stats64->syncp);
+			start = qmi_u64_stats_fetch_begin(&stats64->syncp);
 			rx_packets = stats64->rx_packets;
 			rx_bytes = stats64->rx_bytes;
 			tx_packets = stats64->tx_packets;
 			tx_bytes = stats64->tx_bytes;
-		} while (u64_stats_fetch_retry_irq(&stats64->syncp, start));
+		} while (qmi_u64_stats_fetch_retry(&stats64->syncp, start));
 
 		stats->rx_packets += rx_packets;
 		stats->rx_bytes += rx_bytes;
@@ -847,12 +855,12 @@ static struct rtnl_link_stats64 *_rmnet_vnd_get_stats64(struct net_device *net, 
 		stats64 = per_cpu_ptr(dev->stats64, cpu);
 
 		do {
-			start = u64_stats_fetch_begin_irq(&stats64->syncp);
+			start = qmi_u64_stats_fetch_begin(&stats64->syncp);
 			rx_packets = stats64->rx_packets;
 			rx_bytes = stats64->rx_bytes;
 			tx_packets = stats64->tx_packets;
 			tx_bytes = stats64->tx_bytes;
-		} while (u64_stats_fetch_retry_irq(&stats64->syncp, start));
+		} while (qmi_u64_stats_fetch_retry(&stats64->syncp, start));
 
         stats->rx_packets += u64_stats_read(&rx_packets);
 		stats->rx_bytes += u64_stats_read(&rx_bytes);
@@ -1457,7 +1465,7 @@ typedef struct {
 } BRMAC_SETTING;
 #endif
 
-int qma_setting_store(struct device *dev, QMAP_SETTING *qmap_settings, size_t size) {
+static int qma_setting_store(struct device *dev, QMAP_SETTING *qmap_settings, size_t size) {
 	struct net_device *netdev = to_net_dev(dev);
 	struct usbnet * usbnetdev = netdev_priv( netdev );
 	struct qmi_wwan_state *info = (void *)&usbnetdev->data;
@@ -1999,8 +2007,8 @@ static void ql_net_get_drvinfo(struct net_device *net, struct ethtool_drvinfo *i
 {
 	/* Inherit standard device info */
 	usbnet_get_drvinfo(net, info);
-	strlcpy(info->driver, driver_name, sizeof(info->driver));
-	strlcpy(info->version, VERSION_NUMBER, sizeof(info->version));
+	strscpy(info->driver, driver_name, sizeof(info->driver));
+	strscpy(info->version, VERSION_NUMBER, sizeof(info->version));
 }
 
 static struct ethtool_ops ql_net_ethtool_ops;
@@ -2680,4 +2688,3 @@ MODULE_AUTHOR("Bjørn Mork <bjorn@mork.no>");
 MODULE_DESCRIPTION("Qualcomm MSM Interface (QMI) WWAN driver");
 MODULE_LICENSE("GPL");
 MODULE_VERSION(QUECTEL_WWAN_VERSION);
-
